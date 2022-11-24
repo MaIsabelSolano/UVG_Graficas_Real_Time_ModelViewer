@@ -7,8 +7,11 @@ import glm
 
 pygame.init()
 
+w = 1000
+h = 800 
+
 screen = pygame.display.set_mode(
-    (1600, 1200),
+    (w, h),
     pygame.OPENGL | pygame.DOUBLEBUF
 )
 # dT = pygame.time.Clock()
@@ -26,7 +29,7 @@ uniform mat4 amatrix;
 void main()
 {
     gl_Position = amatrix * vec4(position, 1.0f);
-    ourColor = vertexColor;
+    // ourColor = vertexColor;
 
 }
 """
@@ -59,9 +62,17 @@ glUseProgram(shader)
 
 
 vertex_data = numpy.array([
-    -0.5, -0.5, 0.0, 1.0, 0.0, 0.0,
-     0.5, -0.5, 0.0, 0.0, 1.0, 0.0,
-     0.0,  0.5, 0.0, 0.0, 0.0, 1.0
+    -1.0, -1.0, 0.0, 1.0, 0.0, 0.0,
+    0.0, -1.0, 0.0, 0.0, 1.0, 0.0,
+    -0.5, 0.0, 0.0, 0.0, 0.0, 1.0,
+
+    1, -1.0, 0.0, 1.0, 0.0, 0.0,
+    0.0, -1.0, 0.0, 0.0, 1.0, 0.0,
+    0.5, 0.0, 0.0, 0.0, 0.0, 1.0,
+
+    -0.5, 0.0, 0.0, 1.0, 0.0, 0.0,
+    0.5, 0.0, 0.0, 0.0, 1.0, 0.0,
+    0.0, 1.0, 0.0, 0.0, 0.0, 1.0
 ], dtype=numpy.float32)
 
 vertex_buffer_object = glGenBuffers(1)
@@ -102,12 +113,12 @@ def calculateMatrix(angle):
 
     projection = glm.perspective(
         glm.radians(45),
-        1600/1200,
+        w/h,
         0.1,
         1000.0
     )
 
-    glViewport(0, 0, 1600, 1200)
+    glViewport(0, 0, w, h)
 
 
     amatrix = projection * view * model
@@ -139,12 +150,12 @@ r = 0
 glClearColor(0.0, 0.0, 0.0, 1.0)
 
 while running:
-    r += 1
+    
     glClear(GL_COLOR_BUFFER_BIT)
 
-    color1 = random.random()
-    color2 = random.random()
-    color3 = random.random()
+    color1 = random.uniform(0.95 ,0.1)
+    color2 = random.uniform(0.95, 0.1)
+    color3 = 0.25
 
     color = glm.vec3(color1, color2, color3)
 
@@ -158,9 +169,19 @@ while running:
 
     calculateMatrix(r)
     glDrawArrays(GL_TRIANGLES, 0, 3)
+    glDrawArrays(GL_TRIANGLES, 3, 3)
+    glDrawArrays(GL_TRIANGLES, 6, 3)
 
     pygame.display.flip()
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
+        keys = pygame.key.get_pressed()
+
+        if keys[pygame.K_a]:
+            r -= 10
+
+        if keys[pygame.K_d]:
+            r += 10
