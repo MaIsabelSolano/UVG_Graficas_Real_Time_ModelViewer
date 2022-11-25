@@ -68,6 +68,7 @@ class ModelViewer(object):
         shader = compileProgram(
             compiled_vertex_shader,
             compiled_fragment_shader
+
         )
         return shader
         
@@ -277,7 +278,6 @@ class ModelViewer(object):
         #         vertex_data = numpy.append(vertex_data, [vm4])
         #         vertex_data = numpy.append(vertex_data, [vm5])
 
-        print(vertex_data)
         self.vertex_data_size = len(vertex_data)
 
         vertex_buffer_object = glGenBuffers(1)
@@ -360,8 +360,6 @@ while running:
     glClear(GL_COLOR_BUFFER_BIT)
 
     mv.render_object()
-
-    print(mv.angle)
 
     pygame.display.flip()
 
