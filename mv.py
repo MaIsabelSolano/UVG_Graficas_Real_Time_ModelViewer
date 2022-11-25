@@ -29,14 +29,17 @@ fragment_shader = """
 layout (location = 0) out vec4 fragColor;
 
 uniform vec3 color;
-
+uniform vec3 angles;
 
 in vec3 ourColor;
 
 void main()
 {
-    // fragColor = vec4(ourColor, 1.0f);
-    fragColor = vec4(color, 1.0f);
+    vec4 c = vec4(color, 1.0f);
+
+    fragColor = vec4((1 - sin(angles.x)), (1 - sin(angles.y)), (1 - sin(angles.z)), 0.0f );
+    // fragColor = vec4(color, 1.0f);
+    
 }
 """
 
@@ -80,7 +83,7 @@ class ModelViewer(object):
         model = translate * rotate * rotate2 * rotate3 * scale
 
         view = glm.lookAt(
-            glm.vec3(0, 2, 5),
+            glm.vec3(0, 2, 3),
             glm.vec3(0, -0.25, 0),
             glm.vec3(0, 1, 0)
         )
@@ -322,21 +325,21 @@ class ModelViewer(object):
             glm.value_ptr(color)
         )
 
-        iTime = time.perf_counter()
+        angles = glm.vec3(mv.angle, mv.angle_v, mv.angle_r)
 
-        # glUniform3fv(
-        #     glGetUniformLocation(self.shader,'iTime'),
-        #     1,
-        #     glm.value_ptr(iTime)
-        # )
+        glUniform3fv(
+            glGetUniformLocation(self.shader,'angles'),
+            1,
+            glm.value_ptr(angles)
+        )
+
+        iTime = time.perf_counter()
 
         self.calculateMatrix()
 
         for i in range(0, self.vertex_data_size, 6):
             glDrawArrays(GL_TRIANGLES, i, 6)
         
-
-
 
 pygame.init()
 
@@ -357,6 +360,8 @@ while running:
     glClear(GL_COLOR_BUFFER_BIT)
 
     mv.render_object()
+
+    print(mv.angle)
 
     pygame.display.flip()
 
