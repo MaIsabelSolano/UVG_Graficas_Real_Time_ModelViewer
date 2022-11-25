@@ -1,23 +1,12 @@
 import numpy
-import random
 import pygame
+import random
 from OpenGL.GL import *
 from OpenGL.GL.shaders import *
+from obj import *
 import glm
 
-pygame.init()
-
-w = 1000
-h = 800 
-
-screen = pygame.display.set_mode(
-    (w, h),
-    pygame.OPENGL | pygame.DOUBLEBUF
-)
-# dT = pygame.time.Clock()
-
-
-
+# Shaders
 vertex_shader = """
 #version 460
 layout (location = 0) in vec3 position;
@@ -50,138 +39,152 @@ void main()
     fragColor = vec4(color, 1.0f);
 }
 """
-compiled_vertex_shader = compileShader(vertex_shader, GL_VERTEX_SHADER)
-compiled_fragment_shader = compileShader(fragment_shader, GL_FRAGMENT_SHADER)
-shader = compileProgram(
-    compiled_vertex_shader,
-    compiled_fragment_shader
-)
 
-glUseProgram(shader)
+# Model viewer class
+class ModelViewer(object):
+    def __init__(self, screen, model):
+        self.screen = screen
+        _, _, self.width, self.height = screen.get_rect()
+        self.model = model
 
+        self.angle = 0
 
+        # Compile Shaders
+        self.shader = self.compile_shader()
+        glUseProgram(self.shader)
 
-vertex_data = numpy.array([
-    -1.0, -1.0, 0.0, 1.0, 0.0, 0.0,
-    0.0, -1.0, 0.0, 0.0, 1.0, 0.0,
-    -0.5, 0.0, 0.0, 0.0, 0.0, 1.0,
+        # Vertex
+        self.vertex_handling()
 
-    1, -1.0, 0.0, 1.0, 0.0, 0.0,
-    0.0, -1.0, 0.0, 0.0, 1.0, 0.0,
-    0.5, 0.0, 0.0, 0.0, 0.0, 1.0,
+    def compile_shader(self):
 
-    -0.5, 0.0, 0.0, 1.0, 0.0, 0.0,
-    0.5, 0.0, 0.0, 0.0, 1.0, 0.0,
-    0.0, 1.0, 0.0, 0.0, 0.0, 1.0
-], dtype=numpy.float32)
+        compiled_vertex_shader = compileShader(vertex_shader, GL_VERTEX_SHADER)
+        compiled_fragment_shader = compileShader(fragment_shader, GL_FRAGMENT_SHADER)
+        shader = compileProgram(
+            compiled_vertex_shader,
+            compiled_fragment_shader
+        )
+        return shader
+        
 
-vertex_buffer_object = glGenBuffers(1)
-glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_object)
-glBufferData(
-    GL_ARRAY_BUFFER,    # Data type
-    vertex_data.nbytes, # Data size in bytes    
-    vertex_data,        # Data pointers
-    GL_STATIC_DRAW
-)
-vertex_array_object = glGenVertexArrays(1)
-glBindVertexArray(vertex_array_object)
+    def calculateMatrix(self):
+        i = glm.mat4(1)
+        translate = glm.translate(i, glm.vec3(0, 0, 0))
+        rotate = glm.rotate(i, glm.radians(self.angle), glm.vec3(0, 1, 0))
+        scale = glm.scale(i, glm.vec3(1, 1, 1))
 
-glVertexAttribPointer(
-    0,
-    3,
-    GL_FLOAT,
-    GL_FALSE,
-    6 * 4,
-    ctypes.c_void_p(0)
-)
-glEnableVertexAttribArray(0)
+        model = translate * rotate * scale
 
-def calculateMatrix(angle):
-    i = glm.mat4(1)
-    translate = glm.translate(i, glm.vec3(0, 0, 0))
-    rotate = glm.rotate(i, glm.radians(angle), glm.vec3(0, 1, 0))
-    # rotate2 = glm.rotate(i, glm.radians(angle), glm.vec3(0, 0, 1))
-    scale = glm.scale(i, glm.vec3(1, 1, 1))
+        view = glm.lookAt(
+            glm.vec3(0, 0, 5),
+            glm.vec3(0, 0, 0),
+            glm.vec3(0, 1, 0)
+        )
 
-    model = translate * rotate * scale
-
-    view = glm.lookAt(
-        glm.vec3(0, 0, 5),
-        glm.vec3(0, 0, 0),
-        glm.vec3(0, 1, 0)
-    )
-
-    projection = glm.perspective(
+        projection = glm.perspective(
         glm.radians(45),
-        w/h,
+        self.width/self.height,
         0.1,
         1000.0
-    )
+        )
 
-    glViewport(0, 0, w, h)
+        glViewport(0, 0, self.width, self.height)
 
+        amatrix = projection * view * model
 
-    amatrix = projection * view * model
-
-    glUniformMatrix4fv(
-        glGetUniformLocation(shader, 'amatrix'),
+        glUniformMatrix4fv(
+        glGetUniformLocation(self.shader, 'amatrix'),
         1,
         GL_FALSE,
         glm.value_ptr(amatrix)
     )
 
-glVertexAttribPointer(
-    1,
-    3,
-    GL_FLOAT,
-    GL_FALSE,
-    6 * 4,
-    ctypes.c_void_p(3 * 4)
+    def vertex_handling(self):
+        vertex_data = numpy.array([
+            -1.0, -1.0, 0.0, 1.0, 0.0, 0.0,
+            0.0, -1.0, 0.0, 0.0, 1.0, 0.0,
+            -0.5, 0.0, 0.0, 0.0, 0.0, 1.0,
+
+            1, -1.0, 0.0, 1.0, 0.0, 0.0,
+            0.0, -1.0, 0.0, 0.0, 1.0, 0.0,
+            0.5, 0.0, 0.0, 0.0, 0.0, 1.0,
+
+            -0.5, 0.0, 0.0, 1.0, 0.0, 0.0,
+            0.5, 0.0, 0.0, 0.0, 1.0, 0.0,
+            0.0, 1.0, 0.0, 0.0, 0.0, 1.0
+        ], dtype=numpy.float32)
+
+        vertex_buffer_object = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_object)
+        glBufferData(
+            GL_ARRAY_BUFFER,    # Data type
+            vertex_data.nbytes, # Data size in bytes    
+            vertex_data,        # Data pointers
+            GL_STATIC_DRAW
+        )
+        vertex_array_object = glGenVertexArrays(1)
+        glBindVertexArray(vertex_array_object)
+
+        glVertexAttribPointer(
+            0,
+            3,
+            GL_FLOAT,
+            GL_FALSE,
+            6 * 4,
+            ctypes.c_void_p(0)
+        )
+        glEnableVertexAttribArray(0)
+
+    def render_object(self):
+        color1 = random.uniform(0.95 ,0.1)
+        color2 = random.uniform(0.95, 0.1)
+        color3 = 0.25
+
+        color = glm.vec3(color1, color2, color3)
+
+        glUniform3fv(
+            glGetUniformLocation(self.shader,'color'),
+            1,
+            glm.value_ptr(color)
+        )
+
+        self.calculateMatrix()
+        glDrawArrays(GL_TRIANGLES, 0, 3)
+        glDrawArrays(GL_TRIANGLES, 3, 3)
+        glDrawArrays(GL_TRIANGLES, 6, 3)
+
+
+
+pygame.init()
+
+screen = pygame.display.set_mode(
+    (800, 800),
+    pygame.OPENGL | pygame.DOUBLEBUF
 )
-glEnableVertexAttribArray(1)
+cube = Obj('./models/cube.obj')
 
-
-
-
-
-running = True
-r = 0
+mv = ModelViewer(screen, cube)
 
 glClearColor(0.0, 0.0, 0.0, 1.0)
 
+# running window
+running = True
 while running:
-    
+
     glClear(GL_COLOR_BUFFER_BIT)
 
-    color1 = random.uniform(0.95 ,0.1)
-    color2 = random.uniform(0.95, 0.1)
-    color3 = 0.25
-
-    color = glm.vec3(color1, color2, color3)
-
-    glUniform3fv(
-        glGetUniformLocation(shader,'color'),
-        1,
-        glm.value_ptr(color)
-    )
-
-    #pygame.time.wait(100)
-
-    calculateMatrix(r)
-    glDrawArrays(GL_TRIANGLES, 0, 3)
-    glDrawArrays(GL_TRIANGLES, 3, 3)
-    glDrawArrays(GL_TRIANGLES, 6, 3)
+    mv.render_object()
 
     pygame.display.flip()
 
     for event in pygame.event.get():
-        if event.type == pygame.QUIT:
+        if (event.type == pygame.QUIT):
             running = False
 
         keys = pygame.key.get_pressed()
 
         if keys[pygame.K_a]:
-            r -= 10
+            mv.angle -= 10
 
         if keys[pygame.K_d]:
-            r += 10
+            mv.angle += 10
